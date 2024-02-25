@@ -2,8 +2,10 @@ import 'dotenv/config';
 import * as Sentry from '@sentry/node';
 import { ProfilingIntegration } from "@sentry/profiling-node";
 import express from "express";
+import twilio from 'twilio';
 
 const app = express();
+app.use(express.json());
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -19,6 +21,8 @@ Sentry.init({
   // Set sampling rate for profiling - this is relative to tracesSampleRate
   profilesSampleRate: 1.0,
 });
+
+const PORT = process.env.PORT || 1337;
 
 // The request handler must be the first middleware on the app
 app.use(Sentry.Handlers.requestHandler());
@@ -42,4 +46,30 @@ app.use(function onError(err, req, res, next) {
   res.end(res.sentry + "\n");
 });
 
-app.listen(3000);
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("My first Sentry error!");
+});
+
+const twilioClient = new twilio(process.env.TWILIO_API_KEY, process.env.TWILIO_API_KEY_SECRET, {
+  accountSid: process.env.TWILIO_ACCOUNT_SID
+});
+
+/** 
+ * This request takes in the following 
+ * {
+ *  "phoneNumber": "+1555555555"
+ * }
+ * 
+ * and it returns back the results
+ */
+app.post(`/lookup`, async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  console.log(phoneNumber);
+
+  res.json({ phoneNumber });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
