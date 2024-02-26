@@ -64,11 +64,63 @@ const twilioClient = new twilio(process.env.TWILIO_API_KEY, process.env.TWILIO_A
  */
 app.post(`/lookup`, async (req, res) => {
   const { phoneNumber } = req.body;
+  const callerIdResult = await getCallerName([phoneNumber]); 
+  const typeResults = await getPhoneNumberType([phoneNumber]); 
 
-  console.log(phoneNumber);
-
-  res.json({ phoneNumber });
+  res.json({
+    'callerId' : callerIdResult[0], 
+    'lineType' : typeResults[0]
+  });
 });
+
+
+app.post(`/lookups`, async (req, res) => {
+  const { phoneNumbers } = req.body; 
+  // returns [ '+15706200103', '+18024791999' ]
+  const callerIdResults = await getCallerName(phoneNumbers); 
+  const typeResults = await getPhoneNumberType(phoneNumbers); 
+  const results = []; 
+
+  for (let i = 0; i < phoneNumbers.length; i++) { 
+    results.push({
+      'callerId': callerIdResults[i],
+      'lineType': typeResults[i]
+    });
+  }
+
+  res.json(results);
+
+});
+
+async function getCallerName(phoneNumbers) {
+  const results = []
+
+  for (const phoneNumber of phoneNumbers) {
+    const result = await twilioClient.lookups.v2
+    .phoneNumbers(phoneNumber)
+    .fetch({fields: 'caller_name'});
+
+    results.push(result.callerName); 
+  }; 
+  return results; 
+}
+
+async function getPhoneNumberType(phoneNumbers) {
+  const results = []
+
+  for (const phoneNumber of phoneNumbers) {
+    const result = await twilioClient.lookups.v2
+    .phoneNumbers(phoneNumber)
+    .fetch({fields: 'line_type_intelligence'});
+
+    results.push(result.lineTypeIntelligence); 
+  }; 
+  return results; 
+}  
+
+
+
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
