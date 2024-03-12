@@ -131,7 +131,16 @@ async function getPhoneNumberType(phoneNumbers) {
  * and it returns back the results
  */
 app.post(`/sms`, async (req, res) => {
+  try {
+    const { firstName, lastName, phoneNumber, message } = req.body;
+    console.log(firstName, lastName, phoneNumber, message);
 
+    
+
+    res.json(req.body);
+  } catch(e) {
+    console.error(e);
+  }
 });
 
 /**
@@ -147,8 +156,17 @@ app.post(`/sms`, async (req, res) => {
  * 
  * and it returns back the results
  */
-app.post(`broadcastSMS`, async(req, res) => {
-  
+app.post(`/broadcastSMS`, async(req, res) => {
+  try {
+    const { people, message } = req.body;
+    console.log(people, message);
+
+
+
+    res.json(req.body);
+  } catch(e) {
+    console.error(e);
+  }
 });
 
 
