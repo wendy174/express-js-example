@@ -119,7 +119,37 @@ async function getPhoneNumberType(phoneNumbers) {
 }  
 
 
+/**
+ * This request takes in the following 
+ * {
+ *  "firstName": "John",
+ * "lastName": "Smith",
+ *  "phoneNumber": "+1555555555",
+ * "message": "Hello John"
+ * }
+ * 
+ * and it returns back the results
+ */
+app.post(`/sms`, async (req, res) => {
 
+});
+
+/**
+ * This request takes in the following 
+ * {
+ * "people": [{
+ *  "firstName": "John",
+ *  "lastName": "Smith",
+ *  "phoneNumber": "+1555555555"
+ * }], 
+ * "message": "Hello ${firstName}"
+ * }
+ * 
+ * and it returns back the results
+ */
+app.post(`broadcastSMS`, async(req, res) => {
+  
+});
 
 
 app.listen(PORT, () => {
