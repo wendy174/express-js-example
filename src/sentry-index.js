@@ -50,6 +50,7 @@ app.get("/debug-sentry", function mainHandler(req, res) {
   throw new Error("My first Sentry error!");
 });
 
+// twilioClient connects to twilio 
 const twilioClient = new twilio(process.env.TWILIO_API_KEY, process.env.TWILIO_API_KEY_SECRET, {
   accountSid: process.env.TWILIO_ACCOUNT_SID
 });
@@ -63,20 +64,27 @@ const twilioClient = new twilio(process.env.TWILIO_API_KEY, process.env.TWILIO_A
  * and it returns back the results
  */
 app.post(`/lookup`, async (req, res) => {
-  const { phoneNumber } = req.body;
-  const callerIdResult = await getCallerName([phoneNumber]); 
-  const typeResults = await getPhoneNumberType([phoneNumber]); 
+  try {
+    const { phoneNumber } = req.body;
+    
 
-  res.json({
-    'callerId' : callerIdResult[0], 
-    'lineType' : typeResults[0]
-  });
+    const callerIdResult = await getCallerName([phoneNumber]); 
+    const typeResults = await getPhoneNumberType([phoneNumber]); 
+
+    res.json({
+      'callerId' : callerIdResult[0], 
+      'lineType' : typeResults[0]
+    });
+  } catch(e) {
+    console.error(e);
+    res.json(e);
+  }
 });
 
 
 app.post(`/lookups`, async (req, res) => {
   const { phoneNumbers } = req.body; 
-  // returns [ '+15706200103', '+18024791999' ]
+  // phoneNumbers returns [ '+15706200103', '+18024791999' ]
   const callerIdResults = await getCallerName(phoneNumbers); 
   const typeResults = await getPhoneNumberType(phoneNumbers); 
   const results = []; 
@@ -134,10 +142,18 @@ app.post(`/sms`, async (req, res) => {
   try {
     const { firstName, lastName, phoneNumber, message } = req.body;
     console.log(firstName, lastName, phoneNumber, message);
+    const {TWILIO_PHONE_NUMBER} = process.env; 
+      // imports twilio phone number 
+    console.log(TWILIO_PHONE_NUMBER);
 
-    
+    const result = await twilioClient.messages
+      .create({ 
+        body: message, 
+        from: TWILIO_PHONE_NUMBER, 
+        to: phoneNumber
+      }); 
 
-    res.json(req.body);
+    res.json(result);
   } catch(e) {
     console.error(e);
   }
@@ -159,11 +175,31 @@ app.post(`/sms`, async (req, res) => {
 app.post(`/broadcastSMS`, async(req, res) => {
   try {
     const { people, message } = req.body;
-    console.log(people, message);
+    const {TWILIO_PHONE_NUMBER} = process.env; 
+    const results = []; 
 
+    for (const person of people) { 
+      const keys = Object.keys(person);
+      let finalMessage = message;
 
+      for (const key of keys) { 
+        if (finalMessage.includes(key)) { 
+          console.log(key); 
+          finalMessage = message.replace(key, person[key]);
+        }
+      }
 
-    res.json(req.body);
+      const result = await twilioClient.messages
+      .create({ 
+        body: finalMessage, 
+        from: TWILIO_PHONE_NUMBER, 
+        to: person.phoneNumber
+      }); 
+      
+      results.push(result)
+    }
+
+    res.json(results);
   } catch(e) {
     console.error(e);
   }
