@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import * as Sentry from '@sentry/node';
+import * as Sentry from '@sentry/node'; // for error tracking 
 import { ProfilingIntegration } from "@sentry/profiling-node";
 import express from "express";
 import twilio from 'twilio';
@@ -8,7 +8,7 @@ const app = express();
 app.use(express.json());
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN,
+  dsn: process.env.SENTRY_DSN, // connects app to Sentry account 
   integrations: [
     // enable HTTP calls tracing
     new Sentry.Integrations.Http({ tracing: true }),
@@ -22,7 +22,7 @@ Sentry.init({
   profilesSampleRate: 1.0,
 });
 
-const PORT = process.env.PORT || 1337;
+const PORT = process.env.PORT || 1337; // port on which express server will run 
 
 // The request handler must be the first middleware on the app
 app.use(Sentry.Handlers.requestHandler());
@@ -50,7 +50,7 @@ app.get("/debug-sentry", function mainHandler(req, res) {
   throw new Error("My first Sentry error!");
 });
 
-// twilioClient connects to twilio 
+// twilioClient used to authenticate app with twilio services
 const twilioClient = new twilio(process.env.TWILIO_API_KEY, process.env.TWILIO_API_KEY_SECRET, {
   accountSid: process.env.TWILIO_ACCOUNT_SID
 });
@@ -67,7 +67,6 @@ app.post(`/lookup`, async (req, res) => {
   try {
     const { phoneNumber } = req.body;
     
-
     const callerIdResult = await getCallerName([phoneNumber]); 
     const typeResults = await getPhoneNumberType([phoneNumber]); 
 
@@ -98,7 +97,9 @@ app.post(`/lookups`, async (req, res) => {
 
   res.json(results);
 
-});
+}); 
+
+// helper functions 
 
 async function getCallerName(phoneNumbers) {
   const results = []
@@ -126,6 +127,7 @@ async function getPhoneNumberType(phoneNumbers) {
   return results; 
 }  
 
+// SMS
 
 /**
  * This request takes in the following 
@@ -141,10 +143,8 @@ async function getPhoneNumberType(phoneNumbers) {
 app.post(`/sms`, async (req, res) => {
   try {
     const { firstName, lastName, phoneNumber, message } = req.body;
-    console.log(firstName, lastName, phoneNumber, message);
     const {TWILIO_PHONE_NUMBER} = process.env; 
       // imports twilio phone number 
-    console.log(TWILIO_PHONE_NUMBER);
 
     const result = await twilioClient.messages
       .create({ 
@@ -204,6 +204,107 @@ app.post(`/broadcastSMS`, async(req, res) => {
     console.error(e);
   }
 });
+
+// phone calls 
+
+app.post(`/call`, async(req, res) => {
+  try { 
+    const {TWILIO_PHONE_NUMBER} = process.env; 
+    const { firstName, lastName, phoneNumber, message } = req.body;
+
+
+    const result = await twilioClient.calls
+      .create({
+        to: phoneNumber, 
+        from: TWILIO_PHONE_NUMBER,
+        twiml: `<Response><Pause length="10"/><Say>${message}</Say></Response>`
+      });
+
+    console.log(result); 
+    res.json(result);
+  } catch(e) { 
+    console.error(e); 
+  }
+}) 
+
+app.post(`/calls`, async(req, res) => {
+  try { 
+    const {TWILIO_PHONE_NUMBER} = process.env; 
+    const { people, message } = req.body;
+    const results = []; 
+
+    for (const person of people) { 
+      const keys = Object.keys(person);
+      let finalMessage = message;
+
+      for (const key of keys) { 
+        if (finalMessage.includes(key)) {
+          finalMessage = message.replace(key, person[key]);
+        }
+      }
+
+      console.log(`finalMessage: ${finalMessage}`);
+
+      const result = await twilioClient.calls
+      .create({
+        to: person.phoneNumber, 
+        from: TWILIO_PHONE_NUMBER,
+        twiml: `<Response><Pause length="10"/><Say>${finalMessage}</Say></Response>`
+      });
+      results.push(result); 
+    }
+
+    res.json(results); 
+
+  } catch(e) { 
+    console.error(e); 
+  }
+}); 
+
+app.post(`/conference`, async(req, res) => {
+  try { 
+    const {TWILIO_PHONE_NUMBER} = process.env; 
+    const { people, message } = req.body;
+    const results = []; 
+
+    for (const person of people) { 
+      const keys = Object.keys(person);
+      let finalMessage = message;
+
+      for (const key of keys) { 
+        if (finalMessage.includes(key)) {
+          finalMessage = message.replace(key, person[key]);
+        }
+      }
+
+      console.log(`finalMessage: ${finalMessage}`);
+
+      const result = await twilioClient.calls
+      .create({
+        to: person.phoneNumber, 
+        from: TWILIO_PHONE_NUMBER,
+        twiml: 
+        `<Response>
+          <Pause length="10"/>
+          <Say>${finalMessage}</Say>
+          <Dial>
+              <Conference>MyConferenceRoom</Conference>
+          </Dial>
+        </Response>`
+      });
+      results.push(result); 
+    }
+
+    res.json(results); 
+
+  } catch(e) { 
+    console.error(e); 
+  }
+}); 
+
+
+
+
 
 
 app.listen(PORT, () => {
